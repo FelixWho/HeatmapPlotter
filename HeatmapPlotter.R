@@ -395,7 +395,7 @@ cat(sprintf("Saved to %s\n", args$plot.fn))
 pdf(args$plot.fn, height=args$height, width=args$width)
 
 #gtable_show_layout(g)
-grid::grid.draw(k1)
+#grid::grid.draw(k1)
 
 #grid::grid.draw(create.dendrogram(data, xy = 1))
 #grid::grid.draw(combined.group)
@@ -414,7 +414,7 @@ grid::grid.draw(k1)
 #plot_grid(d1, blank, g, d2, align = "hv", nrow = 2, ncol = 2, rel_widths = c(10, 1), rel_heights = c(1, 2))
 
 #Closest answer
-#grid.arrange(combined.group, legendGrob2, heights = c(8, 1), nrow = 2, newpage = FALSE)
+grid.arrange(combined.group, legendGrob2, heights = c(8, 1), nrow = 2, newpage = FALSE)
 
 grid.newpage()
 gtable_show_layout(combined.group)
