@@ -118,7 +118,7 @@ bars <- function(dat, RColBrewPalette = "Set1", isTop = TRUE){
 }
 
 #Returns indices to sort data by method specified in the argument.
-indices<-function(dat, method = "input", xy = 1){    #sorts `data`,  xy = 1 sorts x axis, xy = 2 sorts y axis
+indices <- function(dat, method = "input", xy = 1){    #sorts `data`,  xy = 1 sorts x axis, xy = 2 sorts y axis
   #Makes a copy of dat 
   dataCl = dat                                     
   
@@ -214,10 +214,10 @@ gtable_frame <- function(g, width=unit(1,"null"), height=unit(1,"null")){
 create.dendrogram <- function(dat, xy = 1) { #xy = 1 operates on x axis, xy = 2 operates on y axis
   if(xy == 1) {
    dd <- dendro_data(as.dendrogram(hclust(dist(t(dat)))))
-   dendrogram.plot <- ggplot(segment(dd)) + geom_segment(aes(x=x, y=y, xend=xend, yend=yend), color="gray50") + scale_y_reverse() + theme_dendro() + theme(plot.margin=unit(c(-0.05,-0.0475,-0.2,-0.0505), "npc"))
+   dendrogram.plot <- ggplot() + geom_segment(data = dd$segments, aes(x=x, y=y, xend=xend, yend=yend), color="gray50") + scale_y_reverse() + theme_dendro() + theme(plot.margin=unit(c(0,2,0,1), "npc"))
   } else {
     dd <- dendro_data(as.dendrogram(hclust(dist(dat))))
-    dendrogram.plot <- ggplot(segment(dd)) + geom_segment(aes(x=x, y=y, xend=xend, yend=yend), color="gray50") +  coord_flip() + scale_y_reverse() + theme_dendro() + theme(plot.margin=unit(c(0,-0.1,0,0), "npc"))
+    dendrogram.plot <- ggplot(segment(dd)) + geom_segment(aes(x=x, y=y, xend=xend, yend=yend), color="gray50") +  coord_flip() + scale_y_reverse() + theme_dendro() + theme(plot.margin=unit(c(0,0,0,0), "npc"))
   }
   return(dendrogram.plot)
 }
@@ -366,10 +366,17 @@ d2$layout$clip[d2$layout$name == "panel"] <- "off"
 legend3 <- gtable_filter(k2, "guide-box")
 d2$heights = g$heights
 
-#Combine plots
+#Create Blank ggPlots
 blank <- ggplot_gtable(ggplot_build(ggplot() + geom_blank())) # Blank ggplot
 blank$heights = d1$heights
 blank$widths = d2$widths
+
+#Create Dendrograms
+dendro.bottom.gb = ggplot_build(create.dendrogram(dat = data.original, xy = 1))
+dendro.bottom.gb$layout$panel_ranges[[1]]$x.range = ggplot_build(p)$layout$panel_ranges[[1]]$x.range
+
+dendro.bottom.gt = ggplot_gtable(dendro.bottom.gb)
+dendro.bottom.gt$widths = g$widths
 
 #Combine 3 legends
 legendGrob <- gtable:::cbind_gtable(legend1, legend2, "last")
@@ -386,8 +393,6 @@ fg13 <- gtable_frame(rbind(fg1, fg3), width=unit(31,"null"), height=unit(32,"nul
 fg2blank <- gtable_frame(rbind(fgblank, fg2), width = unit(1,"null"), height = unit(32,"null"))
 
 combined.group <- gtable_frame(cbind(fg13, fg2blank), width = unit(32, "null"), height = unit(32, "null"))
-
-
 
 #------------------------------------------------------------------------------------------------------------
 # Save
@@ -411,12 +416,17 @@ grid::grid.draw(combined.group)
 #                                                                                                                    c(4, 4)))
 
 
-#plot_grid(d1, blank, g, d2, align = "hv", nrow = 2, ncol = 2, rel_widths = c(10, 1), rel_heights = c(1, 2))
 
 #Closest answer
 #grid.arrange(combined.group, legendGrob2, heights = c(8, 1), nrow = 2, newpage = FALSE)
 
 grid.newpage()
-gtable_show_layout(combined.group)
+grid.draw(dendro.bottom.gt)
+
+grid.newpage()
+grid.draw(rbind(fg3, gtable_frame(dendro.bottom.gt)))
+
+grid.newpage()
+grid.arrange(fg3, dendro.bottom.gt, nrow = 2, heights = c(2,1))
 dev.off()
 
