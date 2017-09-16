@@ -77,16 +77,14 @@ if(!is.na(args$sampleset.grouping)){
   sample_categories <- read.table(as.character(args$sampleset.grouping), header=FALSE, sep = "\t", comment.char = "#")
 }
 
-#PlotMaster H.A.K. [Hugs And Kisses] Felix Hu, Justin Chen ---------------------------------------------
+# PlotMaster H.A.K. [Hugs And Kisses] Felix Hu, Justin Chen ---------------------------------------------
 
-#Functions
-
-#Returns a palette of size (n) 
+# Returns a palette of size n
 getPalette = colorRampPalette(brewer.pal(9, "Set1"))
 
-#Split string by ';' and returns either first or second substring
-labSplit<-function(str, front = TRUE){
-  t<-unlist(strsplit(str,";"))
+# Returns the first or second token of a split string by ';'
+labSplit<-function(str, front = TRUE, delimeter = ";"){
+  t<-unlist(strsplit(str, delimeter))
   if(front) {
     return(t[1])
   } else {
@@ -94,33 +92,29 @@ labSplit<-function(str, front = TRUE){
   }
 }
 
-#Generate plots to act as side bars
+# Return generated plots to act as side bars
 bars <- function(dat, RColBrewPalette = "Set1", isTop = TRUE){
 
   getPalette = colorRampPalette(brewer.pal(brewer.pal.info[RColBrewPalette,]$maxcolors, RColBrewPalette))
   
   if(isTop){
-    
     val <- dat[apply(dat, 1, function(r) any(r %in% as.character(dat$Gene[1]))),]
     f <- ggplot(val, aes(val, x = Sample, y = Gene)) + geom_tile(aes(fill = as.character(Sample_Category))) + scale_fill_manual(values = c(getPalette(length(unique(val$Sample_Category)))), name = "Gene Key")  + ggtitle(args$plot.title)
-    
   } else {
-    
     val <- dat[apply(dat, 1, function(r) any(r %in% as.character(dat$Sample[1]))),]
     f <- ggplot(val, aes(val, x = Sample, y = Gene)) + geom_tile(aes(fill = as.character(Gene_Category))) + scale_fill_manual(values = c(getPalette(length(unique(val$Gene_Category)))), name = "Sample Key")
-    
   }
   
   f <- f + theme_bw()
   f <- f + theme(axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank(), panel.border = element_blank(), legend.direction = "horizontal", plot.margin = unit(c(0, 0.03, 0, 0), "in"))
-  
   return(f)
 }
 
-#Returns indices to sort data by method specified in the argument.
-indices <- function(dat, method = "input", xy = 1){    #sorts `data`,  xy = 1 sorts x axis, xy = 2 sorts y axis
-  #Makes a copy of dat 
-  dataCl = dat                                     
+# Returns indices to sort data by method specified in the argument.
+# Sorts dat,  xy = 1 sorts x axis, xy = 2 sorts y axis
+indices <- function(dat, method = "input", xy = 1){
+
+  dataCl = dat  # Makes a copy of dat                                   
   
   if(method == "alphabet"){                      
     if(xy == 1){
@@ -175,7 +169,7 @@ indices <- function(dat, method = "input", xy = 1){    #sorts `data`,  xy = 1 so
   }
 }
 
-# Function for panel alignment from Baptiste's gridExtra library.
+# Returns a gtable_frame object used for panel alignment from Baptiste's gridExtra library.
 # Found at https://github.com/baptiste/gridextra/wiki/arranging-ggplot
 gtable_frame <- function(g, width=unit(1,"null"), height=unit(1,"null")){
   panels <- g[["layout"]][grepl("panel", g[["layout"]][["name"]]), ]
@@ -211,7 +205,9 @@ gtable_frame <- function(g, width=unit(1,"null"), height=unit(1,"null")){
   all
 }
 
-create.dendrogram <- function(dat, xy = 1) { #xy = 1 operates on x axis, xy = 2 operates on y axis
+# Return a dendrogram ggPlot
+# xy = 1 operates on x axis, xy = 2 operates on y axis
+create.dendrogram <- function(dat, xy = 1) {
   if(xy == 1) {
    dd <- dendro_data(as.dendrogram(hclust(dist(t(dat)))))
    dendrogram.plot <- ggplot() + geom_segment(data = dd$segments, aes(x=x, y=y, xend=xend, yend=yend), color="gray50") + scale_y_reverse() + theme_dendro() + theme(plot.margin=unit(c(0,2,0,1), "npc"))
@@ -221,26 +217,27 @@ create.dendrogram <- function(dat, xy = 1) { #xy = 1 operates on x axis, xy = 2 
   }
   return(dendrogram.plot)
 }
-  
+
+
 met = args$sort.method
 
-#Reformat 'data' samples
+# Reformat 'data' samples
 data <- data[,indices(data, method = met)]
 
-#Reformat 'data' genes
+# Reformat 'data' genes
 data <- data [indices(data, xy = 2, method = met),]
 
-#Read plot data
+# Read plot data
 plotData<-as.data.frame(melt(as.matrix(data)))
 names(plotData) = c('Gene', 'Sample', 'Variant')
 #Keep track of original indices of plotData
 plotData$ind <- c(1:nrow(plotData))
 
-#Gene grouping
+# Gene grouping
 if(!is.na(args$gene.grouping)){
   names(gene_categories) = c("Gene", "Gene_Category")
   
-    #Error checking
+    # Error checking
     if(length(gene_categories$Gene) < length(unique(plotData$Gene))){
       stop("Your plotting data and grouping manual do not match: \"", c(setdiff(as.character(gene_categories$Gene), as.character(unique(plotData$Gene))), setdiff(as.character(unique(plotData$Gene)), as.character(gene_categories$Gene))), "\" fail to overlap")
     }
@@ -248,11 +245,11 @@ if(!is.na(args$gene.grouping)){
   plotData<-merge(x = plotData, y = gene_categories, all.x = TRUE)
 }
 
-#Sampleset grouping
+# Sampleset grouping
 if(!is.na(args$sampleset.grouping)){
   names(sample_categories) = c("Sample", "Sample_Category")
   
-    #Error checking
+    # Error checking
     if(length(sample_categories$Sample) < length(unique(plotData$Sample))){
       stop("Your plotting data and sampleset grouping manual do not match: \"", c(setdiff(as.character(sample_categories$Sample), as.character(unique(plotData$Sample))), setdiff(as.character(unique(plotData$Sample)), as.character(sample_categories$Sample))), "\" fail to overlap")
     }  
@@ -260,131 +257,133 @@ if(!is.na(args$sampleset.grouping)){
   plotData<-merge(x = plotData, y = sample_categories, all.x = TRUE)
 }
 
-#Sort plotData according to original indices
+# Sort plotData according to original indices
 plotData <- plotData[order(plotData$ind),]
 
-#Prepare y-axis labels if gene grouping is true
+# Prepare y-axis labels if gene grouping is true
 if(!is.na(args$gene.grouping)){
   labY = unique(sort(interaction(plotData$Gene_Category, plotData$Gene, lex.order = FALSE, sep = ";")))
   lY2<-unlist(lapply(labY, function(x) labSplit(as.character(x))))
   lY<-unlist(lapply(labY, function(x) labSplit(as.character(x), FALSE)))
 }
 
-#Prepare x-axis labels if sampleset grouping is true
+# Prepare x-axis labels if sampleset grouping is true
 if(!is.na(args$sampleset.grouping)){
   labX = unique(sort(interaction(plotData$Sample_Category, plotData$Sample, lex.order = FALSE, sep = ";")))
   lX2<-unlist(lapply(labX, function(x) labSplit(as.character(x))))
   lX<-unlist(lapply(labX, function(x) labSplit(as.character(x),front = FALSE)))
 }
 
-#Heatmap Plot
-#Tell ggPlot that plotData$Sample is a factor
+# Heatmap Plot
+# Tell ggPlot that plotData$Sample is a factor
 plotData$Sample <- as.character(plotData$Sample)
 plotData$Sample <- factor(plotData$Sample, levels = unique(plotData$Sample))
 
-#Tell ggPlot that plotData$Gene is a factor
+# Tell ggPlot that plotData$Gene is a factor
 plotData$Gene <- as.character(plotData$Gene)
 plotData$Gene <- factor(plotData$Gene, levels = unique(plotData$Gene))
 
-p <- ggplot(plotData, aes(x=Sample, y=Gene))
+plot <- ggplot(plotData, aes(x=Sample, y=Gene))
 
 if(args$gradiant.scale){
-  p = p + geom_tile(aes(fill = Variant)) + scale_fill_gradient(low = "white", high = "black", name = "Key") + theme_bw()
+  plot = plot + geom_tile(aes(fill = Variant)) + scale_fill_gradient(low = "white", high = "black", name = "Key") + theme_bw()
 } else {
-  p = p + geom_tile(aes(fill = as.character((Variant)))) + scale_fill_manual(values = c("white", getPalette(length(unique(plotData$Variant)))), name = "Key") + theme_bw()
+  plot = plot + geom_tile(aes(fill = as.character((Variant)))) + scale_fill_manual(values = c("white", getPalette(length(unique(plotData$Variant)))), name = "Key") + theme_bw()
 }
 
-#Format x axis labels
+# Format x axis labels
 if(args$skip.x.label == TRUE){
   textx = element_blank()
 } else {
   textx = element_text(angle=-90, hjust=0, vjust=1, color = "black")
 }
 
-#Format y axis labels
+# Format y axis labels
 if(args$skip.y.label == TRUE){
   texty = element_blank()
 } else {
   texty = element_text(color = "black")
 }
 
-p = p + theme(axis.title.x = element_blank(), axis.text.x = textx, axis.title.y = element_blank(), axis.text.y = texty, panel.grid = element_blank(),
-        axis.ticks = element_blank(),  panel.border = element_rect(colour = "black", fill=NA, size=0.5),
+plot = plot + theme(axis.title.x = element_blank(), axis.text.x = textx, axis.title.y = element_blank(), axis.text.y = texty, panel.grid = element_blank(),
+        axis.ticks = element_blank(),  panel.border = element_rect(colour = "black", fill = NA, size = 0.5),
         plot.margin = unit(c(0.01, 0.01, 0, 0),"npc"), legend.direction = "horizontal", legend.position = "right")
 
-#Legend
+# Legend
 if(args$hide.legend == TRUE){
-  p = p + guides(fill = FALSE)
+  plot = plot + guides(fill = FALSE)
 }
   
-#Top bar sampleset grouping
+# Create top bar for sampleset grouping
 if(!is.na(args$sampleset.grouping)){
   
-  #Get top bar coordinates
+  # Get top bar coordinates
   indX<-c(which(diff(as.numeric(as.factor(lX2)))!=0))
   indX = c(indX, length(lX2))
 
 }
 
-#Side bar gene grouping
+# Create side bar for gene grouping
 if(!is.na(args$gene.grouping)){
   
-  #Get side bar coordinates
+  # Get side bar coordinates
   indY<-c(which(diff(as.numeric(as.factor(lY2)))!=0))
   indY = c(indY, length(lY2))
   
 }
 
-#Build heatmap plot
-g <- ggplot_gtable(ggplot_build(p + guides(fill = FALSE)))
+# Build heatmap plot
+plot.gt.noguides <- ggplot_gtable(ggplot_build(plot + guides(fill = FALSE)))
 
-#g <- gtable_add_rows(g, unit(5,"cm"))
-#g <- gtable_add_grob(g, ggplotGrob(create.dendrogram(data.original, xy = 1)), t = nrow(g), l=4, b=nrow(g), r=4)
-#g <- gtable_add_cols(g, unit(5, "cm"), pos = 0)
+#plot.gt <- gtable_add_rows(plot.gt, unit(5,"cm"))
+#plot.gt <- gtable_add_grob(plot.gt, ggplotGrob(create.dendrogram(data.original, xy = 1)), t = nrow(plot.gt), l=4, b=nrow(plot.gt), r=4)
+#plot.gt <- gtable_add_cols(plot.gt, unit(5, "cm"), pos = 0)
 
-g2 <- ggplot_gtable(ggplot_build(p))
-g$layout$clip[g$layout$name == "panel"] <- "off"
-legend1 <- gtable_filter(g2, "guide-box")
+plot.gt.guides <- ggplot_gtable(ggplot_build(plot))
+plot.gt.noguides$layout$clip[plot.gt.noguides$layout$name == "panel"] <- "off"
+legend1 <- gtable_filter(plot.gt.guides, "guide-box")
 
-print(plotData)
+# Build topbar plot
+topbar.gp <- bars(dat = plotData, RColBrewPalette = "Set2", isTop = T)
+topbar.gp.noguides = topbar.gp + guides(fill = FALSE)
+topbar.gt.noguides <- ggplot_gtable(ggplot_build(topbar.gp.noguides))
+topbar.gt <- ggplot_gtable(ggplot_build(topbar.gp))
+topbar.gt.noguides$layout$clip[topbar.gt.noguides$layout$name == "panel"] <- "off"
+legend2 <- gtable_filter(topbar.gt, "guide-box")
+topbar.gt.noguides$widths = plot.gt.noguides$widths
 
-#Build topbar plot
-l1 <- bars(dat = plotData, RColBrewPalette = "Set2", isTop = T)
-s1 = l1 + guides(fill = FALSE)
-d1 <- ggplot_gtable(ggplot_build(s1))
-k1 <- ggplot_gtable(ggplot_build(l1))
-d1$layout$clip[d1$layout$name == "panel"] <- "off"
-legend2 <- gtable_filter(k1, "guide-box")
-d1$widths = g$widths
-
-#Build sidebar plot
+# Build sidebar plot
 l2 <- bars(dat = plotData, isTop = F) 
 s2 = l2 + guides(fill = FALSE)
 k2 <- ggplot_gtable(ggplot_build(l2))
 d2 <- ggplot_gtable(ggplot_build(s2))
 d2$layout$clip[d2$layout$name == "panel"] <- "off"
 legend3 <- gtable_filter(k2, "guide-box")
-d2$heights = g$heights
+d2$heights = plot.gt.noguides$heights
 
-#Create Blank ggPlots
-blank <- ggplot_gtable(ggplot_build(ggplot() + geom_blank())) # Blank ggplot
-blank$heights = d1$heights
-blank$widths = d2$widths
-
-#Create Dendrograms
+# Create Dendrograms
 dendro.bottom.gb = ggplot_build(create.dendrogram(dat = data.original, xy = 1))
-dendro.bottom.gb$layout$panel_ranges[[1]]$x.range = ggplot_build(p)$layout$panel_ranges[[1]]$x.range
+dendro.bottom.gb$layout$panel_ranges[[1]]$x.range = ggplot_build(plot)$layout$panel_ranges[[1]]$x.range
 
 dendro.bottom.gt = ggplot_gtable(dendro.bottom.gb)
-dendro.bottom.gt$widths = g$widths
+dendro.bottom.gt$widths = plot.gt.noguides$widths
 
-#Combine 3 legends
+# Create Blank ggPlots
+blank <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()))
+blank$heights = topbar.gt.noguides$heights
+blank$widths = d2$widths
+
+blank2 <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()))
+blank2$heights = dendro.bottom.gt$heights
+blank2$widths = dendro.bottom.gt$widths
+
+# Combine legends
 legendGrob <- gtable:::cbind_gtable(legend1, legend2, "last")
 legendGrob2 <- gtable:::cbind_gtable(legendGrob, legend3, "last")
 
-fg1 <- gtable_frame(d1, width = unit(31,"null"), height = unit(1,"null"))
+fg1 <- gtable_frame(topbar.gt.noguides, width = unit(31,"null"), height = unit(1,"null"))
 fg2 <- gtable_frame(d2, width = unit(1, "null"), height = unit(31, "null"))
-fg3 <- gtable_frame(g, width = unit(31, "null"), height = unit(31, "null"))
+fg3 <- gtable_frame(plot.gt.noguides, width = unit(31, "null"), height = unit(31, "null"))
 
 fgblank <- gtable_frame(blank, width = unit(10, "null"), height = unit(1, "null"))
 
@@ -394,13 +393,13 @@ fg2blank <- gtable_frame(rbind(fgblank, fg2), width = unit(1,"null"), height = u
 
 combined.group <- gtable_frame(cbind(fg13, fg2blank), width = unit(32, "null"), height = unit(32, "null"))
 
+# Combine combined.group with bottom dendrogram
+#blank2.fg <- gtable_frame(blank, width = unit(1, "null"), height = unit(5, "null"))
+
 #------------------------------------------------------------------------------------------------------------
 # Save
 cat(sprintf("Saved to %s\n", args$plot.fn))
 pdf(args$plot.fn, height=args$height, width=args$width)
-
-#gtable_show_layout(g)
-#grid::grid.draw(k1)
 
 #grid::grid.draw(create.dendrogram(data, xy = 1))
 grid::grid.draw(combined.group)
@@ -409,9 +408,9 @@ grid::grid.draw(combined.group)
 #                                                                                                                                        c(NA,2,NA)))
 
 #Closer answers
-#main.plot.gb <- arrangeGrob(d1, blank, g, d2, widths = c(45, 1), heights = c(1, 20), ncol = 2, nrow = 2) #layout_matrix = rbind(c(1, NA), c(1, 2)))
+#main.plot.gb <- arrangeGrob(topbar.gt.noguides, blank, plot.gt, d2, widths = c(45, 1), heights = c(1, 20), ncol = 2, nrow = 2) #layout_matrix = rbind(c(1, NA), c(1, 2)))
 
-#main.plot.gb <- arrangeGrob(d1, g, d2, legendGrob2, widths = c(45, 1), heights = c(1, 20, 1), layout_matrix = rbind(c(1, NA),
+#main.plot.gb <- arrangeGrob(topbar.gt.noguides, plot.gt, d2, legendGrob2, widths = c(45, 1), heights = c(1, 20, 1), layout_matrix = rbind(c(1, NA),
 #                                                                                                                    c(2, 3),
 #                                                                                                                    c(4, 4)))
 
@@ -428,5 +427,6 @@ grid.draw(rbind(fg3, gtable_frame(dendro.bottom.gt)))
 
 grid.newpage()
 grid.arrange(fg3, dendro.bottom.gt, nrow = 2, heights = c(2,1))
+
 dev.off()
 
