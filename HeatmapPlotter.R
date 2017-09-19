@@ -364,7 +364,9 @@ dendro.bottom.gt$widths = plot.gt.noguides$widths
 
 # Create blank.gt ggPlots
 blank.gt <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()))
-
+blank.gt$heights = topbar.gt.noguides$heights
+blank.gt$widths = topbar.gt.noguides$widths
+                    
 blank2 <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()))
 blank2$heights = dendro.bottom.gt$heights
 blank2$widths = dendro.bottom.gt$widths
