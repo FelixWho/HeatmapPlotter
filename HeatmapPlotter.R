@@ -44,8 +44,10 @@ parse_args = function() {
     y.title = get_val_arg(args, "-Y", "Gene")
     gene.grouping = get_val_arg(args, "-g", NA)     
     sampleset.grouping = get_val_arg(args, "-p", NA)
+    side.dendrogram = get_bool_arg(args, "-G") 
+    bottom.dendrogram = get_bool_arg(args, "-P") 
     plot.title = get_val_arg(args, "-t", "Plot")
-    hide.legend = get_bool_arg(args, "-l")
+    hide.legend = get_bool_arg(args, "-l") #TODO: FIX
     gradiant.scale = get_bool_arg(args, "-s")
     sort.method = as.character(get_val_arg(args, "-m", "alphabetgrouping"))
     data.input.longFormat = get_bool_arg(args, "-f")
@@ -57,7 +59,7 @@ parse_args = function() {
     
     val = list( 'plot.fn'=plot.fn, 'verbose'=verbose, 'data.fn'=data.fn,
                 'height'=height, 'width'=width, 'skip.x.label'=skip.x.label, 'skip.y.label'=skip.y.label,
-                'gene.grouping'=gene.grouping, 'sampleset.grouping'=sampleset.grouping,
+                'gene.grouping'=gene.grouping, 'sampleset.grouping'=sampleset.grouping, 'side.dendrogram' = side.dendrogram, 'bottom.dendrogram' = bottom.dendrogram,
                 'plot.title'=plot.title, 'hide.legend'=hide.legend, 'sort.method' = sort.method,
                 'gradiant.scale'=gradiant.scale, 'sort.method'=sort.method,'data.input.longFormat'=data.input.longFormat)
     
@@ -110,7 +112,7 @@ bars <- function(dat, RColBrewPalette = "Set1", isTop = TRUE){
   
   if(isTop){
     val <- dat[apply(dat, 1, function(r) any(r %in% as.character(dat$Gene[1]))),]
-    f <- ggplot(val, aes(val, x = Sample, y = Gene)) + geom_tile(aes(fill = as.character(Sample_Category))) + scale_fill_manual(values = c(getPalette(length(unique(val$Sample_Category)))), name = "Gene Key")  + ggtitle(args$plot.title)
+    f <- ggplot(val, aes(val, x = Sample, y = Gene)) + geom_tile(aes(fill = as.character(Sample_Category))) + scale_fill_manual(values = c(getPalette(length(unique(val$Sample_Category)))), name = "Gene Key")
   } else {
     val <- dat[apply(dat, 1, function(r) any(r %in% as.character(dat$Sample[1]))),]
     f <- ggplot(val, aes(val, x = Sample, y = Gene)) + geom_tile(aes(fill = as.character(Gene_Category))) + scale_fill_manual(values = c(getPalette(length(unique(val$Gene_Category)))), name = "Sample Key")
@@ -221,7 +223,7 @@ gtable_frame <- function(g, width=unit(1,"null"), height=unit(1,"null")){
 create.dendrogram <- function(dat, xy = 1) {
   if(xy == 1) {
    dd <- dendro_data(as.dendrogram(hclust(dist(t(dat)))))
-   dendrogram.plot <- ggplot() + geom_segment(data = dd$segments, aes(x=x, y=y, xend=xend, yend=yend), color="gray50") + scale_y_reverse() + theme_dendro() + theme(plot.margin=unit(c(0,2,0,1), "npc"))
+   dendrogram.plot <- ggplot() + geom_segment(data = dd$segments, aes(x=x, y=y, xend=xend, yend=yend), color="gray50") + scale_y_reverse() + theme_dendro() + theme(plot.margin=unit(c(0,0,0,0), "npc"))
   } else {
     dd <- dendro_data(as.dendrogram(hclust(dist(dat))))
     dendrogram.plot <- ggplot(segment(dd)) + geom_segment(aes(x=x, y=y, xend=xend, yend=yend), color="gray50") +  coord_flip() + scale_y_reverse() + theme_dendro() + theme(plot.margin=unit(c(0,0,0,0), "npc"))
@@ -338,73 +340,143 @@ if(!is.na(args$gene.grouping)){
   indY = c(indY, length(lY2))
 }
 
-# Build heatmap plot
-plot.gt.noguides <- ggplot_gtable(ggplot_build(plot + guides(fill = FALSE)))
+#------ 10/7/17
 
-#plot.gt <- gtable_add_rows(plot.gt, unit(5,"cm"))
-#plot.gt <- gtable_add_grob(plot.gt, ggplotGrob(create.dendrogram(data.original, xy = 1)), t = nrow(plot.gt), l=4, b=nrow(plot.gt), r=4)
-#plot.gt <- gtable_add_cols(plot.gt, unit(5, "cm"), pos = 0)
-
-plot.gt.guides <- ggplot_gtable(ggplot_build(plot))
+# Build heatmap
+plot.gt.noguides <- ggplot_gtable(ggplot_build(plot + guides(fill = FALSE))) # plot without legend
 plot.gt.noguides$layout$clip[plot.gt.noguides$layout$name == "panel"] <- "off"
-legend.plot <- gtable_filter(plot.gt.guides, "guide-box")
+plot.gf.final <- gtable_frame(plot.gt.noguides, width = unit(31, "null"), height = unit(31, "null"))
 
-if(!is.na(args$gene.grouping)) {
-# Build topbar plot
-topbar.gp <- bars(dat = plotData, RColBrewPalette = "Set2", isTop = T)
-topbar.gp.noguides = topbar.gp + guides(fill = FALSE)
-topbar.gt.noguides <- ggplot_gtable(ggplot_build(topbar.gp.noguides))
-topbar.gt <- ggplot_gtable(ggplot_build(topbar.gp))
-topbar.gt.noguides$layout$clip[topbar.gt.noguides$layout$name == "panel"] <- "off"
-legend.topbar <- gtable_filter(topbar.gt, "guide-box")
-topbar.gt.noguides$widths = plot.gt.noguides$widths
+if(!args$hide.legend){
+  plot.gt.guides <- ggplot_gtable(ggplot_build(plot)) # plot with legend
+  legend.grob <- gtable_filter(plot.gt.guides, "guide-box") # rip the legend off plot.gt.guides
 }
 
 if(!is.na(args$sampleset.grouping)) {
-# Build sidebar plot
-sidebar.gp <- bars(dat = plotData, isTop = F) 
-sidebar.gp.noguides = sidebar.gp + guides(fill = FALSE)
-sidebar.gt <- ggplot_gtable(ggplot_build(sidebar.gp))
-sidebar.gt.noguides <- ggplot_gtable(ggplot_build(sidebar.gp.noguides))
-sidebar.gt.noguides$layout$clip[sidebar.gt.noguides$layout$name == "panel"] <- "off"
-legend.sidebar <- gtable_filter(sidebar.gt, "guide-box")
-sidebar.gt.noguides$heights = plot.gt.noguides$heights
+  # Build topbar plot
+  topbar.gp <- bars(dat = plotData, RColBrewPalette = "Set2", isTop = T)
+  topbar.gp.noguides = topbar.gp + guides(fill = FALSE)
+  topbar.gt.noguides <- ggplot_gtable(ggplot_build(topbar.gp.noguides))
+  topbar.gt.noguides$widths = plot.gt.noguides$widths
+  topbar.gt.noguides$layout$clip[topbar.gt.noguides$layout$name == "panel"] <- "off"
+  topbar.gf.noguides <- gtable_frame(topbar.gt.noguides, width = unit(31,"null"), height = unit(1,"null"))
+  
+  plot.gf.final = gtable_frame(rbind(topbar.gf.noguides, plot.gf.final), width=unit(31,"null"), height=unit(32,"null"))
+  
+  if(!args$hide.legend){
+    topbar.gt <- ggplot_gtable(ggplot_build(topbar.gp))
+    legend.topbar <- gtable_filter(topbar.gt, "guide-box") # rip the legend off of topbar.gt
+    legend.grob = gtable:::cbind_gtable(legend.grob, legend.topbar, "last")
+  }
 }
 
-# Create Dendrograms
-dendro.bottom.gb = ggplot_build(create.dendrogram(dat = data.original, xy = 1))
-dendro.bottom.gb$layout$panel_ranges[[1]]$x.range = ggplot_build(plot)$layout$panel_ranges[[1]]$x.range
-dendro.bottom.gt = ggplot_gtable(dendro.bottom.gb)
-dendro.bottom.gt$widths = plot.gt.noguides$widths
+if(!is.na(args$gene.grouping)) {
+  # Build sidebar plot
+  sidebar.gp <- bars(dat = plotData, isTop = F) 
+  sidebar.gp.noguides = sidebar.gp + guides(fill = FALSE)
+  sidebar.gt.noguides <- ggplot_gtable(ggplot_build(sidebar.gp.noguides))
+  sidebar.gt.noguides$heights = plot.gt.noguides$heights
+  sidebar.gt.noguides$layout$clip[sidebar.gt.noguides$layout$name == "panel"] <- "off"
+  sidebar.gf.noguides <- gtable_frame(sidebar.gt.noguides, width = unit(1, "null"), height = unit(31, "null"))
+  
+  if(!is.na(args$sampleset.grouping)){
+    blank.gt <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()))
+    blank.gt$heights = topbar.gt.noguides$heights
+    blank.gt$widths = topbar.gt.noguides$widths
+    blank.gf = gtable_frame(blank.gt, width = unit(1, "null"), height = unit(1, "null"))
+    
+    sidebar.gf <- gtable_frame(rbind(blank.gf, sidebar.gf.noguides), width = unit(1,"null"), height = unit(32,"null"))
+    plot.gf.final = gtable_frame(cbind(plot.gf.final, sidebar.gf), width = unit(32, "null"), height = unit(32, "null"))
+  
+  } else {
+    sidebar.gf <- sidebar.gf.noguides
+    plot.gf.final = gtable_frame(cbind(plot.gf.final, sidebar.gf), width = unit(32, "null"), height = unit(31, "null"))
+  }
 
-if(!is.na(args$sampleset.grouping) && !is.na(args$gene.grouping)){
-# Create blank.gt ggPlots
-blank.gt <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()))
-blank.gt$heights = topbar.gt.noguides$heights
-blank.gt$widths = topbar.gt.noguides$widths
-
-blank2 <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()))
-blank2$heights = dendro.bottom.gt$heights
-blank2$widths = dendro.bottom.gt$widths
-
-# Combine legends
-legendGrob <- gtable:::cbind_gtable(legend.plot, legend.topbar, "last")
-legendGrob2 <- gtable:::cbind_gtable(legendGrob, legend.sidebar, "last")
-
-topbar.gf.noguides <- gtable_frame(topbar.gt.noguides, width = unit(31,"null"), height = unit(1,"null"))
-sidebar.gf.noguides <- gtable_frame(sidebar.gt.noguides, width = unit(1, "null"), height = unit(31, "null"))
-plot.gf.noguides <- gtable_frame(plot.gt.noguides, width = unit(31, "null"), height = unit(31, "null"))
-blank.gf <- gtable_frame(blank.gt, width = unit(10, "null"), height = unit(1, "null"))
-
-plot.topbar.gf <- gtable_frame(rbind(topbar.gf.noguides, plot.gf.noguides), width=unit(31,"null"), height=unit(32,"null"))
-
-blank.sidebar.gf <- gtable_frame(rbind(blank.gf, sidebar.gf.noguides), width = unit(1,"null"), height = unit(32,"null"))
-
-graph.bars <- gtable_frame(cbind(plot.topbar.gf, blank.sidebar.gf), width = unit(32, "null"), height = unit(32, "null"))
-
+  if(!args$hide.legend){
+    sidebar.gt <- ggplot_gtable(ggplot_build(sidebar.gp))
+    legend.sidebar <- gtable_filter(sidebar.gt, "guide-box") # rip the legend off of sidebar.gt
+    legend.grob = gtable:::cbind_gtable(legend.grob, legend.sidebar, "last")
+  }
 }
-# Combine graph.bars with bottom dendrogram
-#blank2.fg <- gtable_frame(blank.gt, width = unit(1, "null"), height = unit(5, "null"))
+
+if(args$side.dendrogram){
+  # Build side dendrogram
+  dendro.side.gb = ggplot_build(create.dendrogram(dat = data.original, xy = 2))
+  dendro.side.gb$layout$panel_ranges[[1]]$y.range = ggplot_build(plot)$layout$panel_ranges[[1]]$y.range
+  dendro.side.gt = ggplot_gtable(dendro.side.gb)
+  dendro.side.gt$heights = plot.gt.noguides$heights
+  dendro.side.gf = gtable_frame(dendro.side.gt, width = unit(1, "null"), height = unit(31, "null"))
+  
+  if(!is.na(args$sampleset.grouping)){
+  blank.gt <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()))
+  blank.gt$heights = dendro.side.gt$heights
+  blank.gt$widths = dendro.side.gt$widths
+  blank.gf = gtable_frame(blank.gt, width = unit(1, "null"), height = unit(1, "null"))
+  
+  dendro.side.final <- gtable_frame(rbind(blank.gf, dendro.side.gf), width = unit(1,"null"), height = unit(32,"null"))
+    if(!is.na(args$gene.grouping)){
+    plot.gf.final = gtable_frame(cbind(dendro.side.final, plot.gf.final), width = unit(33,"null"), height = unit(32,"null"))
+    } else {
+      plot.gf.final = gtable_frame(cbind(dendro.side.final, plot.gf.final), width = unit(32,"null"), height = unit(32,"null"))
+    }
+  } else if(!is.na(args$gene.grouping)){
+      plot.gf.final = gtable_frame(cbind(dendro.side.gf, plot.gf.final), width = unit(33,"null"), height = unit(31,"null"))
+    } else {
+      plot.gf.final = gtable_frame(cbind(dendro.side.gf, plot.gf.final), width = unit(32,"null"), height = unit(31,"null"))
+    }
+  
+}
+
+if(args$bottom.dendrogram){
+  # Build bottom dendrogram
+  dendro.bottom.gb = ggplot_build(create.dendrogram(dat = data.original, xy = 1))
+  dendro.bottom.gb$layout$panel_ranges[[1]]$x.range = ggplot_build(plot)$layout$panel_ranges[[1]]$x.range
+  dendro.bottom.gt = ggplot_gtable(dendro.bottom.gb)
+  dendro.bottom.gt$widths = plot.gt.noguides$widths
+  dendro.bottom.final = gtable_frame(dendro.bottom.gt, width = unit(31, "null"), height = unit(1, "null"))
+  
+  if(!is.na(args$gene.grouping)){
+    blank.gt <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()+ theme(panel.background = element_rect(fill = 'green', colour = 'red'))))
+    blank.gt$heights = dendro.bottom.gt$heights
+    blank.gt$widths = dendro.bottom.gt$widths
+    blank.gf = gtable_frame(blank.gt, width = unit(1, "null"), height = unit(1, "null"))
+    
+    dendro.bottom.final = gtable_frame(cbind(dendro.bottom.final, blank.gf), width = unit(32,"null"), height = unit(1,"null"))
+    if(args$side.dendrogram){
+      dendro.bottom.final = gtable_frame(cbind(blank.gf, dendro.bottom.final), width = unit(33,"null"), height = unit(1,"null"))
+    }
+  } else if(args$side.dendrogram){
+    blank.gt <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()+ theme(panel.background = element_rect(fill = 'green', colour = 'red'))))
+    blank.gt$heights = dendro.bottom.gt$heights
+    blank.gt$widths = dendro.bottom.gt$widths
+    blank.gf = gtable_frame(blank.gt, width = unit(1, "null"), height = unit(1, "null"))
+    
+    dendro.bottom.final = gtable_frame(cbind(blank.gf, dendro.bottom.final), width = unit(32,"null"), height = unit(1,"null"))
+  }
+  
+  if(!is.na(args$sampleset.grouping)){
+    if(args$side.dendrogram & !is.na(args$gene.grouping)) {
+      plot.gf.final = gtable_frame(rbind(plot.gf.final, dendro.bottom.final), width = unit(33,"null"), height = unit(33,"null"))
+    } else if(args$side.dendrogram | !is.na(args$gene.grouping)){
+      plot.gf.final = gtable_frame(rbind(plot.gf.final, dendro.bottom.final), width = unit(32,"null"), height = unit(33,"null"))
+    }
+  } else {
+    if(args$side.dendrogram & !is.na(args$gene.grouping)) {
+      plot.gf.final = gtable_frame(rbind(plot.gf.final, dendro.bottom.final), width = unit(33,"null"), height = unit(32,"null"))
+    } else if(args$side.dendrogram | !is.na(args$gene.grouping)){
+      plot.gf.final = gtable_frame(rbind(plot.gf.final, dendro.bottom.final), width = unit(32,"null"), height = unit(32,"null"))
+    }
+  }
+}
+
+# Title
+if (!is.null(args$plot.title)) {
+  title.ggp = textGrob(args$plot.title)
+  plot.gf.final = arrangeGrob(title.ggp, plot.gf.final, heights = c(0.025, 0.975), ncol=1, nrow=2)
+}
+
+#----- end 10/7/17
 
 #------------------------------------------------------------------------------------------------------------
 # Save
@@ -418,7 +490,7 @@ pdf(args$plot.fn, height=args$height, width=args$width)
 #grid.arrange(graph.bars, bottom.dendrogram.gt, side.dendrogram.gt, widths = c(2, 31, 1), heights = c(1, 31, 2), layout_matrix = rbind(c(NA,1,1),
 #                                                                                                                                        c(3,1,1),
 #                                                                                                                                        c(NA,2,NA)))
-grid.draw(plot.gt.noguides)
+grid.draw(plot.gf.final)
 #Closer answers
 #main.plot.gb <- arrangeGrob(topbar.gt.noguides, blank.gt, plot.gt, sidebar.gt.noguides, widths = c(45, 1), heights = c(1, 20), ncol = 2, nrow = 2) #layout_matrix = rbind(c(1, NA), c(1, 2)))
 
@@ -427,18 +499,6 @@ grid.draw(plot.gt.noguides)
 #                                                                                                                    c(4, 4)))
 
 
-
-#Closest answer
-#grid.arrange(graph.bars, legendGrob2, heights = c(8, 1), nrow = 2, newpage = FALSE)
-  
-grid.newpage()
-#grid.draw(dendro.bottom.gt)
-
-grid.newpage()
-#grid.draw(rbind(plot.gf.noguides, gtable_frame(dendro.bottom.gt)))
-
-grid.newpage()
-#grid.arrange(plot.gf.noguides, dendro.bottom.gt, nrow = 2, heights = c(2,1))
 
 dev.off()
 
