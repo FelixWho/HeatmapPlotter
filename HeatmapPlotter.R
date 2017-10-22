@@ -318,8 +318,8 @@ if(args$skip.y.label == TRUE){
 }
 
 plot = plot + theme(axis.title.x = element_blank(), axis.text.x = textx, axis.title.y = element_blank(), axis.text.y = texty, panel.grid = element_blank(),
-        axis.ticks = element_blank(), panel.border = element_rect(colour = "black", fill = NA, size = 0.5),
-        plot.margin = unit(c(0.01, 0.01, 0, 0),"npc"), legend.direction = "horizontal", legend.position = "right")
+        axis.ticks = element_blank(), panel.border = element_rect(colour = "black", fill = NA, size = 0.5,),
+        plot.margin = unit(c(0, 0, 0, 0),"npc"), legend.direction = "horizontal", legend.position = "right")
 
 # Legend
 if(args$hide.legend == TRUE){
@@ -339,8 +339,6 @@ if(!is.na(args$gene.grouping)){
   indY<-c(which(diff(as.numeric(as.factor(lY2)))!=0))
   indY = c(indY, length(lY2))
 }
-
-#------ 10/7/17
 
 # Build heatmap
 plot.gt.noguides <- ggplot_gtable(ggplot_build(plot + guides(fill = FALSE))) # plot without legend
@@ -402,14 +400,14 @@ if(!is.na(args$gene.grouping)) {
 
 if(args$side.dendrogram){
   # Build side dendrogram
-  dendro.side.gb = ggplot_build(create.dendrogram(dat = data.original, xy = 2))
+  dendro.side.gb = ggplot_build(create.dendrogram(dat = data.original, xy = 2)+theme(panel.background = element_rect(fill = 'red', colour = 'red')))
   dendro.side.gb$layout$panel_ranges[[1]]$y.range = ggplot_build(plot)$layout$panel_ranges[[1]]$y.range
   dendro.side.gt = ggplot_gtable(dendro.side.gb)
   dendro.side.gt$heights = plot.gt.noguides$heights
   dendro.side.gf = gtable_frame(dendro.side.gt, width = unit(1, "null"), height = unit(31, "null"))
   
   if(!is.na(args$sampleset.grouping)){
-  blank.gt <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()))
+  blank.gt <- ggplot_gtable(ggplot_build(ggplot() + geom_blank() +theme(plot.margin=unit(c(0,0,0,0), "npc"),panel.background = element_rect(fill = 'green', colour = 'red'))))
   blank.gt$heights = dendro.side.gt$heights
   blank.gt$widths = dendro.side.gt$widths
   blank.gf = gtable_frame(blank.gt, width = unit(1, "null"), height = unit(1, "null"))
@@ -430,14 +428,14 @@ if(args$side.dendrogram){
 
 if(args$bottom.dendrogram){
   # Build bottom dendrogram
-  dendro.bottom.gb = ggplot_build(create.dendrogram(dat = data.original, xy = 1))
-  dendro.bottom.gb$layout$panel_ranges[[1]]$x.range = ggplot_build(plot)$layout$panel_ranges[[1]]$x.range
+  dendro.bottom.gb = ggplot_build(create.dendrogram(dat = data.original, xy = 1) +theme(panel.background = element_rect(fill = 'red', colour = 'red')))
+  dendro.bottom.gb$layout$panel_ranges[[1]]$x.range = ggplot_build(plot + guides(fill = FALSE))$layout$panel_ranges[[1]]$x.range
   dendro.bottom.gt = ggplot_gtable(dendro.bottom.gb)
   dendro.bottom.gt$widths = plot.gt.noguides$widths
   dendro.bottom.final = gtable_frame(dendro.bottom.gt, width = unit(31, "null"), height = unit(1, "null"))
   
   if(!is.na(args$gene.grouping)){
-    blank.gt <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()+ theme(panel.background = element_rect(fill = 'green', colour = 'red'))))
+    blank.gt <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()+ theme(plot.margin=unit(c(0,0,0,0), "npc"),panel.background = element_rect(fill = 'green', colour = 'red'))))
     blank.gt$heights = dendro.bottom.gt$heights
     blank.gt$widths = dendro.bottom.gt$widths
     blank.gf = gtable_frame(blank.gt, width = unit(1, "null"), height = unit(1, "null"))
@@ -447,7 +445,7 @@ if(args$bottom.dendrogram){
       dendro.bottom.final = gtable_frame(cbind(blank.gf, dendro.bottom.final), width = unit(33,"null"), height = unit(1,"null"))
     }
   } else if(args$side.dendrogram){
-    blank.gt <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()+ theme(panel.background = element_rect(fill = 'green', colour = 'red'))))
+    blank.gt <- ggplot_gtable(ggplot_build(ggplot() + geom_blank()+ theme(plot.margin=unit(c(0,0,0,0), "npc"),panel.background = element_rect(fill = 'green', colour = 'red'))))
     blank.gt$heights = dendro.bottom.gt$heights
     blank.gt$widths = dendro.bottom.gt$widths
     blank.gf = gtable_frame(blank.gt, width = unit(1, "null"), height = unit(1, "null"))
@@ -476,8 +474,6 @@ if (!is.null(args$plot.title)) {
   plot.gf.final = arrangeGrob(title.ggp, plot.gf.final, heights = c(0.025, 0.975), ncol=1, nrow=2)
 }
 
-#----- end 10/7/17
-
 #------------------------------------------------------------------------------------------------------------
 # Save
 cat(sprintf("Saved to %s\n", args$plot.fn))
@@ -485,12 +481,17 @@ pdf(args$plot.fn, height=args$height, width=args$width)
 
 #grid::grid.draw(create.dendrogram(data, xy = 1))
 
-#grid::grid.draw(graph.bars)
+#grid::grid.draw(graphg.bars)
 
 #grid.arrange(graph.bars, bottom.dendrogram.gt, side.dendrogram.gt, widths = c(2, 31, 1), heights = c(1, 31, 2), layout_matrix = rbind(c(NA,1,1),
 #                                                                                                                                        c(3,1,1),
 #                                                                                                                                        c(NA,2,NA)))
 grid.draw(plot.gf.final)
+#grid.draw(plot +guides(fill = FALSE))
+
+
+#grid.draw(ggplot_gtable(ggplot_build(create.dendrogram(dat = data.original, xy = 1))))
+
 #Closer answers
 #main.plot.gb <- arrangeGrob(topbar.gt.noguides, blank.gt, plot.gt, sidebar.gt.noguides, widths = c(45, 1), heights = c(1, 20), ncol = 2, nrow = 2) #layout_matrix = rbind(c(1, NA), c(1, 2)))
 
