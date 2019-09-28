@@ -478,27 +478,8 @@ if (!is.null(args$plot.title)) {
 # Save
 cat(sprintf("Saved to %s\n", args$plot.fn))
 pdf(args$plot.fn, height=args$height, width=args$width)
-
-#grid::grid.draw(create.dendrogram(data, xy = 1))
-
-#grid::grid.draw(graphg.bars)
-
-#grid.arrange(graph.bars, bottom.dendrogram.gt, side.dendrogram.gt, widths = c(2, 31, 1), heights = c(1, 31, 2), layout_matrix = rbind(c(NA,1,1),
-#                                                                                                                                        c(3,1,1),
-#                                                                                                                                        c(NA,2,NA)))
+                                                                                                                              
 grid.draw(plot.gf.final)
-#grid.draw(plot +guides(fill = FALSE))
-
-
-#grid.draw(ggplot_gtable(ggplot_build(create.dendrogram(dat = data.original, xy = 1))))
-
-#Closer answers
-#main.plot.gb <- arrangeGrob(topbar.gt.noguides, blank.gt, plot.gt, sidebar.gt.noguides, widths = c(45, 1), heights = c(1, 20), ncol = 2, nrow = 2) #layout_matrix = rbind(c(1, NA), c(1, 2)))
-
-#main.plot.gb <- arrangeGrob(topbar.gt.noguides, plot.gt, sidebar.gt.noguides, legendGrob2, widths = c(45, 1), heights = c(1, 20, 1), layout_matrix = rbind(c(1, NA),
-#                                                                                                                    c(2, 3),
-#                                                                                                                    c(4, 4)))
-
 
 
 dev.off()
